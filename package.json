@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js"
@@ -11,6 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.4.7",
+    "mongoose": "^8.12.2",
     "node-telegram-bot-api": "^0.66.0",
     "pg": "^8.14.1",
     "sequelize": "^6.37.6",

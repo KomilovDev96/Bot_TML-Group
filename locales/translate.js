@@ -1,0 +1,31 @@
+export default {
+    uz: {
+      start: "Assalomu alaykum! Tilni tanlang:",
+      alreadyRegistered: "Siz ro'yxatdan o'tgansiz.",
+      languageSet: "Til muvaffaqiyatli o'zgartirildi.",
+      sendWallets: "Iltimos, BSC va TRC20 hamyon manzilingizni yuboring.",
+      bscAccepted: "BSC hamyon qabul qilindi!",
+      trcAccepted: "TRC20 hamyon qabul qilindi!",
+      referralLink: "Sizning referal havolangiz: ",
+      referralCount: "Sizning referallaringiz soni: ",
+      walletDetails: "Sizning hamyonlaringiz:",
+      help: "Yordam uchun admin bilan bog'laning.",
+      totalUsers: "Jami foydalanuvchilar soni: ",
+      topUsers: "Top 10 foydalanuvchilar:\n",
+    },
+    ru: {
+      start: "Добро пожаловать! Выберите язык:",
+      alreadyRegistered: "Вы уже зарегистрированы.",
+      languageSet: "Язык успешно изменен.",
+      sendWallets: "Пожалуйста, отправьте ваши кошельки BSC и TRC20.",
+      bscAccepted: "Кошелек BSC принят!",
+      trcAccepted: "Кошелек TRC20 принят!",
+      referralLink: "Ваша реферальная ссылка: ",
+      referralCount: "Количество ваших рефералов: ",
+      walletDetails: "Ваши кошельки:",
+      help: "Свяжитесь с администратором для помощи.",
+      totalUsers: "Общее количество пользователей: ",
+      topUsers: "Топ 10 пользователей:\n",
+    },
+  };
+  
