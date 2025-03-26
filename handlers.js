@@ -8,9 +8,10 @@ module.exports = (bot) => {
     // Проверка BNB адреса
     const isValidBnbAddress = (address) => /^0x[a-fA-F0-9]{40}$/.test(address);
 
-    // Генерация реферальной ссылки
-    const getReferralLink = (userId) => `https://t.me/${bot.options.username}?start=ref${userId}`;
-
+    const getReferralLink = async (userId) => {
+        const botInfo = await bot.getMe();
+        return `https://t.me/${botInfo.username}?start=ref${userId}`;
+    };
     // Обработка команды /start
     bot.onText(/\/start(?: ref(\d+))?/, async (msg, match) => {
         const chatId = msg.chat.id;
@@ -61,6 +62,10 @@ module.exports = (bot) => {
             const lang = user.language;
             const texts = TEXTS[lang];
 
+
+            // Генерация реферальной ссылки
+
+
             // Выбор языка
             if (["🇷🇺 Русский", "🇺🇿 O'zbekcha"].includes(text)) {
                 const language = text.includes('Русский') ? 'ru' : 'uz';
@@ -110,9 +115,8 @@ module.exports = (bot) => {
                 }
 
                 await User.updateOne({ telegramId: userId }, { bnbAddress: text });
-                const refLink = getReferralLink(userId);
+                const refLink = await getReferralLink(userId); // Ждем разрешения Promise
                 const refCount = user.referrals.length;
-
                 // Определяем текст кнопки в зависимости от языка
                 const referralButtonText = lang === 'ru'
                     ? '/referrals - Мои рефералы'
@@ -121,7 +125,7 @@ module.exports = (bot) => {
                 // Формируем финальное сообщение без Markdown
                 const finalMessage = texts.success
                     .replace('{userId}', userId)
-                    .replace('{refLink}', refLink)
+                    .replace('{refLink}', refLink) // Теперь refLink - строка, а не Promise
                     .replace('{refCount}', refCount)
                     .replace('{adminUsername}', ADMIN_USERNAME);
 
@@ -134,32 +138,42 @@ module.exports = (bot) => {
             }
 
             // Обработка команды /referrals
+
             else if (text.startsWith('/referrals')) {
-                const refCount = user.referrals.length;
-                const points = user.points;
+                try {
+                    const refCount = user.referrals.length;
+                    const points = user.points;
+                    const refLink = await getReferralLink(userId);
 
-                let message;
-                if (refCount > 0) {
-                    message = `📊 ${lang === 'ru' ? 'Ваши рефералы' : 'Sizning referallaringiz'}:\n\n` +
-                        `👥 ${lang === 'ru' ? 'Приглашено' : 'Taklif qilingan'}: ${refCount}\n` +
-                        `⭐ ${lang === 'ru' ? 'Баллы' : 'Ballar'}: ${points}`;
-                } else {
-                    message = lang === 'ru'
-                        ? 'У вас пока нет приглашенных друзей'
-                        : 'Hozircha taklif qilingan do\'stlaringiz yo\'q';
-                }
-
-                // Кнопка для приглашения друзей
-                const inviteButton = {
-                    text: lang === 'ru' ? 'Пригласить друзей' : 'Do\'stlarni taklif qilish',
-                    url: `https://t.me/share/url?url=https://t.me/${bot.options.username}?start=ref${userId}`
-                };
-
-                bot.sendMessage(chatId, message, {
-                    reply_markup: {
-                        inline_keyboard: [[inviteButton]]
+                    let message;
+                    if (refCount > 0) {
+                        message = lang === 'ru'
+                            ? `📊 Ваши рефералы:\n\n👥 Приглашено: ${refCount}\n⭐ Баллы: ${points}`
+                            : `📊 Referallaringiz:\n\n👥 Taklif qilganlar: ${refCount}\n⭐ Ballar: ${points}`;
+                    } else {
+                        message = lang === 'ru'
+                            ? '🔹 Пригласите друзей и получайте бонусы!'
+                            : '🔹 Do‘stlaringizni taklif qiling va bonus oling!';
                     }
-                });
+
+                    const inviteButton = {
+                        text: lang === 'ru' ? 'Пригласить друзей ✉️' : 'Do‘stlarni taklif qilish ✉️',
+                        url: `https://t.me/share/url?url=${encodeURIComponent(`Присоединяйся к боту! ${refLink}`)}`
+                    };
+
+                    await bot.sendMessage(chatId, message, {
+                        reply_markup: {
+                            inline_keyboard: [[inviteButton]]
+                        }
+                    });
+
+                } catch (error) {
+                    console.error('Ошибка в /referrals:', error);
+                    const errorText = lang === 'ru'
+                        ? '❌ Ошибка при загрузке рефералов'
+                        : '❌ Referallarni yuklashda xatolik';
+                    bot.sendMessage(chatId, errorText);
+                }
             }
 
         } catch (error) {
