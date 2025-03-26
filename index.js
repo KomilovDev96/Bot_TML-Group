@@ -1,50 +1,92 @@
 // /bot/index.js
 
 import TelegramBot from 'node-telegram-bot-api';
+
+import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import translations from './locales/translate.js';
+import messages from './locales/translate.js';
 import { User } from './database/models.js';
-
 dotenv.config();
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 
 // Подключение к MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-});
+mongoose.set("strictQuery", false);
+mongoose.connect(process.env.MONGODB_URI).then(() => {
+    console.log(`Mongoga onlayn ulandik`);
+})
+
 
 const getTranslation = async (chatId, key) => {
     const user = await User.findOne({ chatId });
     const lang = user ? user.language : 'uz';
-    return translations[lang][key];
+    return messages[lang][key];
 };
 
 // Стартовое сообщение
+// === Обработка команды /start ===
+// === Обработка команды /start ===
+// === Обработка команды /start ===
 bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id.toString();
-    let user = await User.findOne({ chatId });
+    const chatId = msg.chat.id;
 
-    if (!user) {
-        await bot.sendMessage(chatId, await getTranslation(chatId, 'start'), {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Oʻzbekcha', callback_data: 'lang_uz' },
-                        { text: 'Русский', callback_data: 'lang_ru' },
-                    ],
-                    [
-                        { text: 'Связаться с админом', url: 'https://t.me/admin_username' }
-                    ]
-                ],
-            },
-        });
-    } else {
-        await bot.sendMessage(chatId, await getTranslation(chatId, 'alreadyRegistered'));
+    // Генерация уникального ID
+    const uniqueId = uuidv4();
+
+    // Сохранение пользователя с уникальным ID
+    await User.findOneAndUpdate(
+        { telegramId: chatId.toString() },
+        { $setOnInsert: { uniqueId, chatId: chatId.toString() } },
+        { upsert: true, new: true }
+    );
+
+    // Показать выбор языка
+    bot.sendMessage(chatId, messages['ru'].start, {
+        reply_markup: {
+            keyboard: [
+                [{ text: '🇷🇺 Русский' }, { text: '🇺🇿 Oʻzbekcha' }],
+            ],
+            resize_keyboard: true,
+        },
+    });
+});
+
+// === Обработка сообщений ===
+bot.on('message', async (msg) => {
+    const chatId = msg.chat.id;
+    const text = msg.text;
+
+    const user = await User.findOne({ telegramId: chatId.toString() });
+    const lang = user?.language || 'ru';
+
+    if (text === '🇷🇺 Русский') {
+        await setLanguage(chatId, 'ru');
+        sendNetworkMessage(chatId, 'ru');
+    } else if (text === '🇺🇿 Oʻzbekcha') {
+        await setLanguage(chatId, 'uz');
+        sendNetworkMessage(chatId, 'uz');
+    } else if (text === 'BSC (BEP20)' || text === 'TRC (TRC20)') {
+        const network = text.includes('BSC') ? 'BSC' : 'TRC';
+        await User.findOneAndUpdate({ telegramId: chatId.toString() }, { network });
+
+        const walletAddress = network === 'BSC'
+            ? '0xb302eb2446dafc84c2ae7397b524f36df19ef116'
+            : 'TWQRBDbi7yDcKmxRzBGFSi9ahDaRqxokSL';
+
+        bot.sendMessage(chatId, `${messages[lang].network_selected(network)} ${walletAddress}. ${messages[lang].enter_txid}`);
+    } else if (user?.network && (!user.walletBSC || !user.walletTRC)) {
+        if (text.length < 10 || !/^([a-zA-Z0-9]+)$/.test(text)) {
+            bot.sendMessage(chatId, messages[lang].invalid_address);
+        } else {
+            const updateField = user.network === 'BSC' ? 'walletBSC' : 'walletTRC';
+            await User.findOneAndUpdate({ telegramId: chatId.toString() }, { [updateField]: text });
+            bot.sendMessage(chatId, messages[lang].address_saved);
+        }
     }
 });
+
+
 
 // Обработка изменения языка
 bot.on('callback_query', async (query) => {
@@ -93,16 +135,15 @@ bot.onText(/\/top/, async (msg) => {
     topUsers.forEach((user, index) => {
         message += `${index + 1}. Chat ID: ${user.chatId} — ${user.referrals.length} рефералов\n`;
     });
-
     await bot.sendMessage(chatId, message);
 });
 
 // Статистика для администратора
-bot.onText(/\/stats/, async (msg) => {
-    const chatId = msg.chat.id.toString();
+// bot.onText(/\/stats/, async (msg) => {
+//     const chatId = msg.chat.id.toString();
 
-    if (chatId !== process.env.ADMIN_CHAT_ID) return;
+//     if (chatId !== process.env.ADMIN_CHAT_ID) return;
 
-    const totalUsers = await User.countDocuments();
-    await bot.sendMessage(chatId, `${await getTranslation(chatId, 'totalUsers')} ${totalUsers}`);
-});
+//     const totalUsers = await User.countDocuments();
+//     await bot.sendMessage(chatId, `${await getTranslation(chatId, 'totalUsers')} ${totalUsers}`);
+// });
