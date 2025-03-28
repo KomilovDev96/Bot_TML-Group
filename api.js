@@ -12,12 +12,19 @@ const checkBscTransaction = async (txId) => {
         return false;
     }
 };
-
 const checkTronTransaction = async (txId) => {
     try {
-        const response = await axios.get(
-            `https://api.tronscan.org/api/transaction-info?hash=${txId}`
-        );
+        const response = await axios.get(`https://apilist.tronscan.org/api/transaction-info`, {
+            params: {
+                hash: txId,
+                apikey: TRONSCAN_API_KEY,
+            },
+        });
+        console.log('Результат проверки Tron TxID:', response.data);
+
+        if (!response.data || Object.keys(response.data).length === 0) {
+            return null;
+        }
         return response.data.contractRet === 'SUCCESS';
     } catch (error) {
         console.error('TronScan API error:', error);
