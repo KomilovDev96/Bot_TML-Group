@@ -12,6 +12,7 @@ module.exports = (bot) => {
         const botInfo = await bot.getMe();
         return `https://t.me/${botInfo.username}?start=ref${userId}`;
     };
+
     // Обработка команды /start
     bot.onText(/\/start(?: ref(\d+))?/, async (msg, match) => {
         const chatId = msg.chat.id;
@@ -32,15 +33,17 @@ module.exports = (bot) => {
                 );
             }
 
-            // Клавиатура выбора языка
-            bot.sendMessage(chatId, "Выберите язык / Tilni tanlang:", {
+            const languageKeyboard = {
                 reply_markup: {
                     keyboard: [
                         [{ text: "🇷🇺 Русский" }, { text: "🇺🇿 O'zbekcha" }]
                     ],
-                    resize_keyboard: true
+                    resize_keyboard: true,
+                    one_time_keyboard: true
                 }
-            });
+            };
+
+            bot.sendMessage(chatId, "Выберите язык / Tilni tanlang:", languageKeyboard);
         } catch (error) {
             console.error('Start error:', error);
             bot.sendMessage(chatId, "⚠️ Ошибка / Xatolik");
@@ -59,31 +62,33 @@ module.exports = (bot) => {
             const user = await User.findOne({ telegramId: userId });
             if (!user) return;
 
-            const lang = user.language;
-            const texts = TEXTS[lang];
-
-
-            // Генерация реферальной ссылки
-
+            // Получаем текущий язык пользователя в начале обработки
+            const lang = user.language || 'ru'; // По умолчанию русский
+            const texts = TEXTS[lang]; // Определяем texts здесь
 
             // Выбор языка
-            if (["🇷🇺 Русский", "🇺🇿 O'zbekcha"].includes(text)) {
-                const language = text.includes('Русский') ? 'ru' : 'uz';
+            if (text === "🇷🇺 Русский" || text === "🇺🇿 O'zbekcha") {
+                const language = text === "🇷🇺 Русский" ? 'ru' : 'uz';
                 await User.updateOne({ telegramId: userId }, { language });
 
-                // Клавиатура выбора сети
-                bot.sendMessage(chatId, texts.languageSelected, {
+                // Используем обновленные тексты
+                const updatedTexts = TEXTS[language];
+
+                const networkKeyboard = {
                     reply_markup: {
                         keyboard: [["TRC20", "BEP20"]],
                         resize_keyboard: true
                     }
-                });
+                };
+
+                bot.sendMessage(chatId, updatedTexts.languageSelected, networkKeyboard);
+                return;
             }
 
             // Выбор сети
             else if (["TRC20", "BEP20"].includes(text)) {
                 await User.updateOne({ telegramId: userId }, { network: text });
-                const address = NETWORKS[text];
+                const address = NETWORKS[text].address;
 
                 bot.sendMessage(chatId, texts.networkSelected
                     .replace('{network}', text)
@@ -115,19 +120,18 @@ module.exports = (bot) => {
                 }
 
                 await User.updateOne({ telegramId: userId }, { bnbAddress: text });
-                const refLink = await getReferralLink(userId); // Ждем разрешения Promise
+                const refLink = await getReferralLink(userId);
                 const refCount = user.referrals.length;
-                // Определяем текст кнопки в зависимости от языка
+
                 const referralButtonText = lang === 'ru'
                     ? '/referrals - Мои рефералы'
                     : '/referrals - Referallarim';
 
-                // Формируем финальное сообщение без Markdown
-                const finalMessage = texts.success
+                const finalMessage = texts.successFull
                     .replace('{userId}', userId)
-                    .replace('{refLink}', refLink) // Теперь refLink - строка, а не Promise
-                    .replace('{refCount}', refCount)
+                    .replace('{refLink}', refLink)
                     .replace('{adminUsername}', ADMIN_USERNAME);
+
 
                 bot.sendMessage(chatId, finalMessage, {
                     reply_markup: {
@@ -138,7 +142,6 @@ module.exports = (bot) => {
             }
 
             // Обработка команды /referrals
-
             else if (text.startsWith('/referrals')) {
                 try {
                     const refCount = user.referrals.length;
@@ -149,7 +152,7 @@ module.exports = (bot) => {
                     if (refCount > 0) {
                         message = lang === 'ru'
                             ? `📊 Ваши рефералы:\n\n👥 Приглашено: ${refCount}\n⭐ Баллы: ${points}`
-                            : `📊 Referallaringiz:\n\n👥 Taklif qilganlar: ${refCount}\n⭐ Ballar: ${points}`;
+                            : `📊 Referallaringiz:\n\n👥 Taklif qilganlar: ${refCount}\n⭐ Ballar: ${points} \n  `;
                     } else {
                         message = lang === 'ru'
                             ? '🔹 Пригласите друзей и получайте бонусы!'
