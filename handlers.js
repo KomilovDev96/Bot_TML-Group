@@ -2,10 +2,10 @@ const { User } = require('./models');
 const { TEXTS, NETWORKS, ADMIN_USERNAME } = require('./config');
 
 module.exports = (bot) => {
-    // Проверка TxID
+
     const isValidTxId = (txId) => /^[0-9a-fA-F]{64}$/.test(txId);
 
-    // Проверка BNB адреса
+   
     const isValidBnbAddress = (address) => /^0x[a-fA-F0-9]{40}$/.test(address);
 
     const getReferralLink = async (userId) => {
@@ -13,7 +13,7 @@ module.exports = (bot) => {
         return `https://t.me/${botInfo.username}?start=ref${userId}`;
     };
 
-    // Обработка команды /start
+   
     bot.onText(/\/start(?: ref(\d+))?/, async (msg, match) => {
         const chatId = msg.chat.id;
         const userId = msg.from.id;
@@ -50,7 +50,7 @@ module.exports = (bot) => {
         }
     });
 
-    // Основной обработчик сообщений
+  
     bot.on('message', async (msg) => {
         const { text, chat, from } = msg;
         const chatId = chat.id;
@@ -62,16 +62,16 @@ module.exports = (bot) => {
             const user = await User.findOne({ telegramId: userId });
             if (!user) return;
 
-            // Получаем текущий язык пользователя в начале обработки
+         
             const lang = user.language || 'ru'; // По умолчанию русский
             const texts = TEXTS[lang]; // Определяем texts здесь
 
-            // Выбор языка
+            
             if (text === "🇷🇺 Русский" || text === "🇺🇿 O'zbekcha") {
                 const language = text === "🇷🇺 Русский" ? 'ru' : 'uz';
                 await User.updateOne({ telegramId: userId }, { language });
 
-                // Используем обновленные тексты
+               
                 const updatedTexts = TEXTS[language];
 
                 const networkKeyboard = {
@@ -85,7 +85,6 @@ module.exports = (bot) => {
                 return;
             }
 
-            // Выбор сети
             else if (["TRC20", "BEP20"].includes(text)) {
                 await User.updateOne({ telegramId: userId }, { network: text });
                 const address = NETWORKS[text].address;
@@ -98,7 +97,7 @@ module.exports = (bot) => {
                 });
             }
 
-            // Обработка TxID
+
             else if (user.network && !user.txId) {
                 if (!isValidTxId(text)) {
                     return bot.sendMessage(chatId, texts.invalidTxId);
@@ -113,7 +112,7 @@ module.exports = (bot) => {
                 bot.sendMessage(chatId, texts.txIdValid);
             }
 
-            // Обработка BNB адреса
+           
             else if (user.txId && !user.bnbAddress) {
                 if (!isValidBnbAddress(text)) {
                     return bot.sendMessage(chatId, texts.invalidBnbAddress);
@@ -141,7 +140,7 @@ module.exports = (bot) => {
                 });
             }
 
-            // Обработка команды /referrals
+           
             else if (text.startsWith('/referrals')) {
                 try {
                     const refCount = user.referrals.length;
